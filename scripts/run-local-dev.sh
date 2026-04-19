@@ -27,6 +27,8 @@ done
 
 docker exec -i "$CONTAINER_NAME" psql -U demo -d demo <"$ROOT/db/init/001_demo.sql"
 
+STATIC_UI="${STATIC_UI_ROOT:-$ROOT/frontend/dist}"
 cd "$ROOT/server"
-exec env DATABASE_URL="$DATABASE_URL" BIND_ADDR="$BIND_ADDR" RUST_LOG="${RUST_LOG:-demo_api=info,tower_http=info}" \
+exec env DATABASE_URL="$DATABASE_URL" BIND_ADDR="$BIND_ADDR" STATIC_UI_ROOT="$STATIC_UI" \
+  RUST_LOG="${RUST_LOG:-demo_api=info,tower_http=info}" \
   "$(command -v cargo)" run --release

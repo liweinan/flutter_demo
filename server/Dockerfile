@@ -1,3 +1,13 @@
+# -------- React（Vite）静态资源 --------
+FROM node:22-bookworm AS frontend-builder
+WORKDIR /build
+COPY frontend/package.json ./
+COPY frontend/package-lock.json* ./
+RUN npm install
+COPY frontend/ ./
+RUN npm run build
+
+# -------- Rust API --------
 # 构建阶段需 Cargo ≥1.85（依赖 crate 声明 edition2024）；使用 rust:1-bookworm = 当前 stable 1.x
 FROM rust:1-bookworm AS builder
 ARG HTTP_PROXY
@@ -59,8 +69,8 @@ RUN set -eux; \
     rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
-COPY Cargo.toml Cargo.lock ./
-COPY src ./src
+COPY server/Cargo.toml server/Cargo.lock ./
+COPY server/src ./src
 RUN cargo build --release
 
 # 将 ldd 所需 .so 拷入固定目录，供 slim 运行时一次性 COPY（最终镜像无 apt）
@@ -74,9 +84,11 @@ RUN set -eux; \
     cp /etc/ssl/certs/ca-certificates.crt /bundle/etc/ssl/certs/
 
 FROM debian:bookworm-slim
+COPY --from=frontend-builder /build/dist /srv/ui
 COPY --from=builder /bundle/usr/lib/ /usr/lib/
 COPY --from=builder /bundle/etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
 COPY --from=builder /app/target/release/demo-api /usr/local/bin/demo-api
 RUN ldconfig
+ENV STATIC_UI_ROOT=/srv/ui
 EXPOSE 8080
 CMD ["demo-api"]

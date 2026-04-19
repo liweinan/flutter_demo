@@ -5,10 +5,12 @@ use axum::{
     Json, Router,
 };
 use serde::Serialize;
+use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::net::TcpListener;
 use tokio_postgres::NoTls;
 use tower_http::cors::{Any, CorsLayer};
+use tower_http::services::ServeDir;
 use tower_http::trace::TraceLayer;
 
 #[derive(Clone)]
@@ -36,6 +38,12 @@ struct ErrorBody {
     error: String,
 }
 
+fn static_ui_root() -> PathBuf {
+    std::env::var("STATIC_UI_ROOT")
+        .map(PathBuf::from)
+        .unwrap_or_else(|_| PathBuf::from("/srv/ui"))
+}
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     tracing_subscriber::fmt()
@@ -57,13 +65,30 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         .allow_methods(Any)
         .allow_headers(Any);
 
-    let app = Router::new()
+    let api = Router::new()
         .route("/health", get(health))
         .route("/db-version", get(db_version))
         .route("/greeting", get(greeting))
-        .layer(cors)
-        .layer(TraceLayer::new_for_http())
         .with_state(state);
+
+    let ui_root = static_ui_root();
+    let app = if ui_root.exists() {
+        tracing::info!("Serving React UI from {:?}", ui_root);
+        Router::new()
+            .merge(api)
+            .nest_service(
+                "/ui",
+                ServeDir::new(ui_root).append_index_html_on_directories(true),
+            )
+            .layer(cors)
+            .layer(TraceLayer::new_for_http())
+    } else {
+        tracing::warn!(
+            "STATIC_UI_ROOT {:?} 不存在，跳过 /ui（本地可先 npm run build）",
+            ui_root
+        );
+        Router::new().merge(api).layer(cors).layer(TraceLayer::new_for_http())
+    };
 
     let listener = TcpListener::bind(&bind_addr).await?;
     tracing::info!("listening on http://{}", bind_addr);

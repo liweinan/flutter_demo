@@ -19,8 +19,8 @@ services:
 
   api:
     build:
-      context: ./server
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: server/Dockerfile
       args:
         HTTP_PROXY: ${HTTP_PROXY:-}
         HTTPS_PROXY: ${HTTPS_PROXY:-}
@@ -32,6 +32,7 @@ services:
       DATABASE_URL: postgresql://demo:demo@db:5432/demo
       BIND_ADDR: 0.0.0.0:8080
       RUST_LOG: demo_api=info,tower_http=info
+      STATIC_UI_ROOT: /srv/ui
       HTTP_PROXY: ${HTTP_PROXY:-}
       HTTPS_PROXY: ${HTTPS_PROXY:-}
       ALL_PROXY: ${ALL_PROXY:-}

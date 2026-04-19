@@ -8,6 +8,10 @@ scripts/android-env.snippet.sh
 # Rust
 /server/target/
 
+# 前端
+/frontend/node_modules/
+/frontend/dist/
+
 # Flutter / Dart（mobile）
 mobile/.dart_tool/
 mobile/build/
