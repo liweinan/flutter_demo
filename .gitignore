@@ -1,0 +1,19 @@
+logs/
+scripts/android-env.snippet.sh
+
+.DS_Store
+.env
+.env.*
+
+# Rust
+/server/target/
+
+# Flutter / Dart（mobile）
+mobile/.dart_tool/
+mobile/build/
+mobile/**/*.freezed.dart
+mobile/**/.packages
+
+# IDE
+.idea/
+*.iml
