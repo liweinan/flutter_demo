@@ -2,6 +2,18 @@
 
 Android 客户端为 **WebView 套壳**，主界面由 **React（Vite + TypeScript）** 从 `http://10.0.2.2:8080/ui/` 加载，与 Rust API 同源调用 `/health`、`/db-version`、`/greeting`；API 读取 PostgreSQL。
 
+## 架构：React 与 Rust
+
+| 层级 | 技术 | 职责 |
+|------|------|------|
+| **后端** | **Rust**（[`server/`](server/)，[Axum](https://github.com/tokio-rs/axum)） | 提供 JSON 路由：`/health`、`/db-version`、`/greeting`；经 [`tokio-postgres`](https://crates.io/crates/tokio-postgres) 访问 PostgreSQL。用 [`tower-http`](https://docs.rs/tower-http) **`ServeDir`** 在 **`/ui`** 下挂载前端静态资源（环境变量 **`STATIC_UI_ROOT`**，Docker 镜像内为 **`/srv/ui`**）。 |
+| **前端** | **React**（[`frontend/`](frontend/)，[Vite](https://vitejs.dev/) + TypeScript） | 业务 UI：在浏览器里执行，通过 **`fetch('/health')`** 等与 **同一来源**（同一 `host:port`）请求上述接口；**不单独起 Node 服务器**。构建产物为静态文件（`npm run build` → `dist/`），由 **Rust 进程** 一并对外提供。Vite 里 **`base: '/ui/'`**，因此页面地址为 **`/ui/`**，资源路径带 **`/ui/assets/...`**。 |
+| **移动端壳** | Flutter + WebView | 仅负责打开 **`http://10.0.2.2:8080/ui/`**（模拟器访问宿主机 API），渲染结果与桌面浏览器访问 **`http://127.0.0.1:8080/ui/`** 一致。 |
+
+**请求关系（简化）**：客户端只连接 **一个 HTTP 入口**（如 `:8080`）。**HTML/JS/CSS** 走 **`/ui/...`**，**JSON 数据** 走 **`/health` 等**，均由 **同一个 Rust 二进制** 响应；数据库仅在服务端由 Rust 访问，React 不直连 Postgres。
+
+本地开发：可先 **`docker compose up`** 起 db + api，再在 `frontend/` 执行 **`npm run dev`**（Vite 开发服务器可把 `/health` 等代理到本机 API，见 `vite.config.ts`）；与「全部放进 Docker」相比，差异主要是前端开发时的热更新方式。
+
 ## 前提
 
 - macOS，已安装 [Docker Desktop](https://www.docker.com/products/docker-desktop/)（或兼容的 `docker compose`）。
