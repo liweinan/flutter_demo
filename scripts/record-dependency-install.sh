@@ -2,7 +2,7 @@
 # 记录本仓库依赖与环境安装过程的终端输出到 logs/ 目录。
 # 用法:
 #   ./scripts/record-dependency-install.sh                   # 仅采集环境与版本信息
-#   ./scripts/record-dependency-install.sh --install         # 尝试通过 Homebrew 安装 cask，并执行 Flutter 依赖拉取
+#   ./scripts/record-dependency-install.sh --install         # 尝试通过 Homebrew 安装 cask，并执行 Flutter / uv(e2e) / cargo / docker build
 #   ./scripts/record-dependency-install.sh --install-android # 额外执行 Android SDK/OpenJDK/emulator（见 scripts/install-android-dev-env.sh）
 #   ./scripts/record-dependency-install.sh --install --install-android  # 两者都做
 #
@@ -59,6 +59,14 @@ if command -v rustc >/dev/null 2>&1; then
   cargo --version
 else
   echo "rustc 未安装（仅本地 cargo build 时需要；Docker 构建可不装）"
+fi
+
+echo ""
+echo "--- uv（用于 e2e/）---"
+if command -v uv >/dev/null 2>&1; then
+  uv --version
+else
+  echo "uv 未安装（E2E 需要；可 brew install uv）"
 fi
 
 echo ""
@@ -130,6 +138,22 @@ if [[ "$DO_INSTALL" == true ]]; then
     (cd "$REPO_ROOT/server" && cargo fetch)
   else
     echo "跳过 cargo fetch（无 cargo 或无 server/Cargo.toml）"
+  fi
+
+  echo ""
+  echo "--- uv + E2E（Python）---"
+  if [[ -f "$REPO_ROOT/e2e/pyproject.toml" ]]; then
+    if ! command -v uv >/dev/null 2>&1; then
+      echo "安装 uv（brew install uv）"
+      brew install uv
+    fi
+    if command -v uv >/dev/null 2>&1; then
+      (cd "$REPO_ROOT/e2e" && uv sync)
+    else
+      echo "uv 仍不可用，跳过 e2e 环境同步"
+    fi
+  else
+    echo "未找到 e2e/pyproject.toml，跳过"
   fi
 
   echo ""
