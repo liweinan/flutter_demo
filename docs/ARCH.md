@@ -2,6 +2,34 @@
 
 本文档描述本仓库各组件使用的框架、运行时与工具，依据仓库内实际配置文件与代码整理。
 
+## 架构总览
+
+```mermaid
+flowchart TB
+  subgraph clients["访问端"]
+    MA["Flutter\nwebview_flutter"]
+    BR["浏览器\n（本地 / E2E）"]
+  end
+
+  subgraph demo_api["demo-api :8080 · Axum · tower-http"]
+    GW["HTTP 入口\nAxum Router"]
+    ST["静态 React\n/ui · ServeDir"]
+    API["JSON API\n/health · /db-version · /greeting"]
+  end
+
+  subgraph compose["Docker Compose"]
+    PG[("PostgreSQL 15")]
+  end
+
+  MA -->|"模拟器常用 10.0.2.2"| GW
+  BR -->|"127.0.0.1"| GW
+  GW --> ST
+  GW --> API
+  API -->|"tokio-postgres"| PG
+```
+
+本地开发时，`frontend/` 可由 Vite 单独起开发服务器（如 `:5173`），并将部分 API 路径代理到 `8080`，上图侧重「API 容器 + DB」的一体化运行时视图。
+
 ## 1. 仓库结构
 
 | 目录 | 职责 |
